@@ -6,7 +6,7 @@ const ws = require("ws");
 const neonConfig = require("@neondatabase/serverless").neonConfig;
 neonConfig.webSocketConstructor = ws;
 
-const connectionString = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_cM3YqXeW4Uji@ep-sparkling-flower-ahmelq2i-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require";
+const connectionString = process.env.DATABASE_URL || "your_database_url_here";
 
 const pool = new Pool({ connectionString });
 
