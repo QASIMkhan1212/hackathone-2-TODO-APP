@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "WebSearch",
+      "WebFetch(domain:openai.github.io)",
+      "Bash(python -m venv:*)",
+      "Bash(venv/Scripts/pip install:*)"
+    ]
+  }
+}

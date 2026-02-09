@@ -1,0 +1,18 @@
+[project]
+name = "phase-3"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.3",
+    "fastapi>=0.128.4",
+    "google-generativeai>=0.8.6",
+    "groq>=1.0.0",
+    "psycopg2-binary>=2.9.11",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.46",
+    "uvicorn>=0.40.0",
+]
