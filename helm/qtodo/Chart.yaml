@@ -1,0 +1,22 @@
+apiVersion: v2
+name: qtodo
+description: Q.TODO App - AI-powered Todo Chatbot with Kubernetes deployment
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - todo
+  - chatbot
+  - ai
+  - nextjs
+  - fastapi
+  - groq
+
+home: https://github.com/your-repo/qtodo
+
+maintainers:
+  - name: Q.TODO Team
+    email: team@qtodo.app
+
+dependencies: []

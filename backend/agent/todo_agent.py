@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 from groq import Groq
 from sqlmodel import Session
@@ -11,8 +12,14 @@ from agent.mcp_tools import call_mcp_tool
 
 load_dotenv()
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Initialize Groq client
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+_groq_api_key = os.getenv("GROQ_API_KEY")
+if not _groq_api_key:
+    raise ValueError("GROQ_API_KEY environment variable is required")
+client = Groq(api_key=_groq_api_key)
 
 
 SYSTEM_PROMPT = """You are a todo list assistant. You help users manage tasks by calling functions.
@@ -51,18 +58,14 @@ class TodoAgent:
 
     def _parse_function_call(self, text: str) -> Optional[Dict]:
         """Extract function call JSON from text."""
-        print(f"[PARSE] Input text: {text}")
-
-        # Try to find any JSON object in the text
+        # Method 1: Direct JSON parse if whole response is JSON
         try:
-            # Method 1: Direct JSON parse if whole response is JSON
             stripped = text.strip()
             if stripped.startswith('{') and stripped.endswith('}'):
                 data = json.loads(stripped)
                 if "function" in data:
-                    print(f"[PARSE] Found direct JSON: {data}")
                     return data
-        except:
+        except json.JSONDecodeError:
             pass
 
         # Method 2: Find JSON in code blocks
@@ -71,9 +74,8 @@ class TodoAgent:
             try:
                 data = json.loads(code_block.group(1))
                 if "function" in data:
-                    print(f"[PARSE] Found in code block: {data}")
                     return data
-            except:
+            except json.JSONDecodeError:
                 pass
 
         # Method 3: Find JSON anywhere in text
@@ -81,9 +83,8 @@ class TodoAgent:
         if json_match:
             try:
                 data = json.loads(json_match.group(0))
-                print(f"[PARSE] Found inline JSON: {data}")
                 return data
-            except:
+            except json.JSONDecodeError:
                 pass
 
         # Method 4: More aggressive search
@@ -93,13 +94,10 @@ class TodoAgent:
                 func_name = json_match.group(1)
                 args_str = json_match.group(2)
                 args = json.loads(args_str)
-                result = {"function": func_name, "arguments": args}
-                print(f"[PARSE] Reconstructed JSON: {result}")
-                return result
-            except:
+                return {"function": func_name, "arguments": args}
+            except json.JSONDecodeError:
                 pass
 
-        print("[PARSE] No function call found")
         return None
 
     def process_message(
@@ -120,9 +118,6 @@ class TodoAgent:
 
         messages.append({"role": "user", "content": message})
 
-        print(f"\n{'='*50}")
-        print(f"[AGENT] User: {message}")
-
         # Get LLM response
         response = client.chat.completions.create(
             model=self.model,
@@ -132,7 +127,6 @@ class TodoAgent:
         )
 
         llm_response = response.choices[0].message.content or ""
-        print(f"[AGENT] LLM Response: {llm_response}")
 
         # Try to parse function call
         func_call = self._parse_function_call(llm_response)
@@ -145,11 +139,8 @@ class TodoAgent:
                 # Add user_id
                 func_args["user_id"] = user_id
 
-                print(f"[AGENT] Executing: {func_name}({func_args})")
-
                 # Execute function
                 result = call_mcp_tool(session, func_name, func_args)
-                print(f"[AGENT] Result: {result}")
 
                 # Record tool call
                 tool_calls_made.append({
@@ -176,25 +167,22 @@ class TodoAgent:
                         status_word = "complete" if result.get("status") == "completed" else "incomplete"
                         response_text = f"Marked '{result.get('title')}' as {status_word}!"
                     else:
-                        response_text = f"Task not found."
+                        response_text = "Task not found."
                 elif func_name == "delete_task":
                     if result.get("status") == "deleted":
                         response_text = f"Deleted '{result.get('title')}'"
                     else:
-                        response_text = f"Task not found."
+                        response_text = "Task not found."
                 elif func_name == "update_task":
                     if result.get("status") == "updated":
                         response_text = f"Updated task to '{result.get('title')}'"
                     else:
-                        response_text = f"Task not found."
+                        response_text = "Task not found."
                 else:
                     response_text = "Done!"
         else:
             # No function call - just return LLM response or help message
             response_text = llm_response if llm_response else "I can help you manage tasks. Try: 'add task buy groceries' or 'show tasks'"
-
-        print(f"[AGENT] Final response: {response_text}")
-        print(f"{'='*50}\n")
 
         return response_text, tool_calls_made
 

@@ -1,0 +1,215 @@
+# ============================================
+# Q.TODO App - Helm Chart Values
+# ============================================
+# Default configuration values for the Q.TODO application
+# Override these values for different environments
+# ============================================
+
+# Global settings
+global:
+  namespace: qtodo
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# ============================================
+# Frontend Configuration (Next.js)
+# ============================================
+frontend:
+  enabled: true
+  name: frontend
+
+  replicaCount: 2
+
+  image:
+    repository: qtodo-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+  # Environment variables (non-sensitive)
+  env:
+    NODE_ENV: production
+    NEXT_TELEMETRY_DISABLED: "1"
+
+  # ConfigMap values
+  config:
+    NEXT_PUBLIC_API_URL: "http://qtodo-backend:8000"
+    NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+  # Probes
+  livenessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Pod settings
+  podAnnotations: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    fsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# ============================================
+# Backend Configuration (FastAPI)
+# ============================================
+backend:
+  enabled: true
+  name: backend
+
+  replicaCount: 2
+
+  image:
+    repository: qtodo-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+  # Environment variables (non-sensitive)
+  env:
+    PYTHONUNBUFFERED: "1"
+    PYTHONDONTWRITEBYTECODE: "1"
+
+  # ConfigMap values
+  config:
+    BETTER_AUTH_URL: "http://qtodo-frontend:3000"
+
+  # Secrets (base64 encoded or use external secrets manager)
+  # These should be overridden via --set or separate values file
+  secrets:
+    databaseUrl: ""
+    betterAuthSecret: ""
+    groqApiKey: ""
+
+  # Probes
+  livenessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Pod settings
+  podAnnotations: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    fsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# ============================================
+# Ingress Configuration
+# ============================================
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+  hosts:
+    - host: qtodo.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+        - path: /
+          pathType: Prefix
+          backend: frontend
+  tls: []
+
+# ============================================
+# Network Policy
+# ============================================
+networkPolicy:
+  enabled: false
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+
+# ============================================
+# Service Account
+# ============================================
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ============================================
+# Pod Disruption Budget
+# ============================================
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

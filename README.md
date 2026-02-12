@@ -1,20 +1,21 @@
-# Hackathon TODO App
+# Q.TODO - AI-Powered Task Management App
 
 A full-stack TODO application with AI-powered task management built with FastAPI (backend) and Next.js (frontend).
 
 ## Features
 
-- 🔐 User authentication with Better Auth
-- ✅ Task management (Create, Read, Update, Delete)
-- 🤖 AI-powered task assistant using Groq
-- 💾 PostgreSQL database (Neon)
-- 🎨 Modern UI with Tailwind CSS
-- 📱 Responsive design
+- User authentication with Better Auth
+- Task management (Create, Read, Update, Delete)
+- AI-powered task assistant using Groq LLM
+- PostgreSQL database (Neon)
+- Modern UI with Tailwind CSS
+- Responsive design
+- Kubernetes deployment ready (Helm charts included)
 
 ## Tech Stack
 
 ### Frontend
-- Next.js 15
+- Next.js 16
 - React 19
 - TypeScript
 - Tailwind CSS
@@ -22,8 +23,8 @@ A full-stack TODO application with AI-powered task management built with FastAPI
 
 ### Backend
 - FastAPI
-- SQLAlchemy
-- PostgreSQL
+- SQLModel
+- PostgreSQL (Neon)
 - Groq AI
 - LangChain
 
@@ -34,33 +35,44 @@ A full-stack TODO application with AI-powered task management built with FastAPI
 - PostgreSQL database (Neon recommended)
 - Groq API key
 
-## Setup Instructions
+## Quick Start
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/QASIMkhan1212/hackathone-2-TODO-APP.git
-cd hackathone-2-TODO-APP
+git clone <your-repo-url>
+cd phase-2
 ```
 
 ### 2. Environment Variables
 
-Copy the secrets from `SECRETS.env` (not in repo) to create your environment files:
+Copy the example environment files and fill in your values:
 
-#### Backend `.env`
-```env
-DATABASE_URL="your_postgresql_connection_string"
-BETTER_AUTH_SECRET="your_secret_key_here"
-BETTER_AUTH_URL="http://localhost:3000"
-GROQ_API_KEY="your_groq_api_key"
+#### Backend
+```bash
+cp backend/.env.example backend/.env
 ```
 
-#### Frontend `.env.local`
+Edit `backend/.env`:
+```env
+DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
+BETTER_AUTH_SECRET="your-secret-key"
+BETTER_AUTH_URL="http://localhost:3000"
+GROQ_API_KEY="your-groq-api-key"
+FRONTEND_URL="http://localhost:3000"
+```
+
+#### Frontend
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+Edit `frontend/.env.local`:
 ```env
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_API_URL="http://localhost:8000"
-DATABASE_URL="your_postgresql_connection_string"
-BETTER_AUTH_SECRET="your_secret_key_here"
+DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
+BETTER_AUTH_SECRET="your-secret-key"
 ```
 
 ### 3. Backend Setup
@@ -70,7 +82,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+uvicorn main:app --reload
 ```
 
 Backend will run on `http://localhost:8000`
@@ -87,53 +99,92 @@ Frontend will run on `http://localhost:3000`
 
 ## Deployment
 
-### Deploy to Vercel
+### Option 1: Vercel + Railway (Recommended)
 
-1. Push your code to GitHub
-2. Import project to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
 
-### Environment Variables for Vercel
+**Quick steps:**
+1. Deploy backend to Railway/Render
+2. Deploy frontend to Vercel
+3. Configure environment variables
 
-Add these in your Vercel project settings:
+### Option 2: Kubernetes (Minikube)
 
-**Frontend:**
-- `NEXT_PUBLIC_APP_URL` - Your Vercel app URL
-- `NEXT_PUBLIC_API_URL` - Your backend API URL
-- `DATABASE_URL` - PostgreSQL connection string
-- `BETTER_AUTH_SECRET` - Secret for auth
+See [KUBERNETES.md](./KUBERNETES.md) for detailed instructions.
 
-**Backend:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `BETTER_AUTH_SECRET` - Same as frontend
-- `BETTER_AUTH_URL` - Your Vercel app URL
-- `GROQ_API_KEY` - Your Groq API key
+**Quick steps:**
+```bash
+# Windows
+.\scripts\deploy.ps1
+
+# Linux/macOS
+./scripts/deploy.sh
+```
+
+### Option 3: Docker Compose (Local)
+
+```bash
+docker-compose up --build
+```
 
 ## Project Structure
 
 ```
-├── backend/           # FastAPI backend
-│   ├── main.py       # Main application
-│   ├── models.py     # Database models
-│   ├── schemas.py    # Pydantic schemas
-│   └── agent/        # AI agent code
-├── frontend/         # Next.js frontend
+├── backend/              # FastAPI backend
+│   ├── main.py          # Main application
+│   ├── models.py        # Database models
+│   ├── schemas.py       # Pydantic schemas
+│   ├── security.py      # Authentication
+│   ├── database.py      # Database connection
+│   ├── agent/           # AI agent code
+│   ├── Dockerfile       # Docker configuration
+│   └── .env.example     # Environment template
+├── frontend/            # Next.js frontend
 │   ├── src/
-│   │   ├── app/     # App router pages
-│   │   ├── components/
-│   │   └── lib/     # Utilities
-│   └── public/
+│   │   ├── app/        # App router pages
+│   │   ├── components/ # React components
+│   │   └── lib/        # Utilities & hooks
+│   ├── public/         # Static assets
+│   ├── Dockerfile      # Docker configuration
+│   └── .env.example    # Environment template
+├── helm/               # Kubernetes Helm charts
+│   └── qtodo/
+├── scripts/            # Deployment scripts
+├── docker-compose.yml  # Local Docker setup
+├── DEPLOYMENT.md       # Cloud deployment guide
+├── KUBERNETES.md       # K8s deployment guide
 └── README.md
 ```
 
 ## API Endpoints
 
-- `GET /api/tasks` - Get all tasks
-- `POST /api/tasks` - Create a new task
-- `PUT /api/tasks/{id}` - Update a task
-- `DELETE /api/tasks/{id}` - Delete a task
-- `POST /api/chat` - Chat with AI assistant
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| GET | `/api/tasks/{user_id}` | Get user's tasks |
+| POST | `/api/tasks/{user_id}` | Create a task |
+| PUT | `/api/tasks/{user_id}/{task_id}` | Update a task |
+| DELETE | `/api/tasks/{user_id}/{task_id}` | Delete a task |
+| POST | `/api/chat` | Chat with AI assistant |
+
+## Environment Variables
+
+### Backend
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Secret key for JWT |
+| `BETTER_AUTH_URL` | Frontend URL |
+| `GROQ_API_KEY` | Groq API key for AI |
+| `FRONTEND_URL` | Frontend URL (CORS) |
+
+### Frontend
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Frontend URL |
+| `NEXT_PUBLIC_API_URL` | Backend API URL |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Secret key for JWT |
 
 ## License
 

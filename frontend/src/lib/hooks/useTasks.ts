@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../api";
-import { authClient } from "../auth-client";
 
 export type Task = {
   id: number;
@@ -13,7 +12,7 @@ type Session = {
     id: string;
     email?: string;
     name?: string;
-    image?: string;
+    image?: string | null;
   };
   session?: {
     id: string;
@@ -35,22 +34,16 @@ type UseTasksResult = {
 // Helper to get JWT token from Better Auth
 async function getJwtToken(): Promise<string | null> {
   try {
-    // The JWT plugin exposes a /api/auth/token endpoint
     const url = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/token`;
-    console.log("Fetching JWT token from:", url);
     const response = await fetch(url, {
       credentials: "include",
     });
-    console.log("Token response status:", response.status);
     if (!response.ok) {
-      console.error("Token fetch failed:", response.status, response.statusText);
       return null;
     }
     const data = await response.json();
-    console.log("Token response data:", data);
     return data.token || null;
-  } catch (err) {
-    console.error("Token fetch error:", err);
+  } catch {
     return null;
   }
 }
@@ -82,18 +75,15 @@ export const useTasks = (session: Session): UseTasksResult => {
     setLoading(true);
     setError(null);
     try {
-      console.log("Fetching tasks for user:", userId);
-      const fetchedTasks = await api.get(jwtToken, `/api/${userId}/tasks`);
-      console.log("Fetched tasks:", fetchedTasks);
+      const fetchedTasks = await api.get<Task[]>(jwtToken, `/api/${userId}/tasks`);
       if (Array.isArray(fetchedTasks)) {
         setTasks(fetchedTasks);
       } else {
-        console.warn("Unexpected response format:", fetchedTasks);
         setTasks([]);
       }
-    } catch (err: any) {
-      console.error("Failed to fetch tasks:", err);
-      setError(err.message || "Failed to fetch tasks.");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch tasks.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -109,9 +99,7 @@ export const useTasks = (session: Session): UseTasksResult => {
   }, [userId, jwtToken, fetchTasks]);
 
   const addTask = async (content: string) => {
-    console.log("addTask called:", { userId, jwtToken: jwtToken ? "exists" : "null", content });
     if (!userId || !jwtToken) {
-      console.error("Cannot add task: missing userId or jwtToken");
       setError("Not authenticated. Please sign in again.");
       setLoading(false);
       return;
@@ -124,14 +112,12 @@ export const useTasks = (session: Session): UseTasksResult => {
     setError(null);
 
     try {
-      const result = await api.post(jwtToken, `/api/${userId}/tasks`, { content });
-      console.log("Task created:", result);
-
+      await api.post<Task>(jwtToken, `/api/${userId}/tasks`, { content });
       // Refresh to get the real task with correct ID
       await fetchTasks();
-    } catch (err: any) {
-      console.error("Failed to add task:", err);
-      setError(err.message || "Failed to add task.");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to add task.";
+      setError(errorMessage);
       // Remove the optimistic task on error
       setTasks(prev => prev.filter(t => t.id !== tempId));
       setLoading(false);
@@ -146,9 +132,8 @@ export const useTasks = (session: Session): UseTasksResult => {
         t.id === taskId ? { ...t, content } : t
       ));
       setError(null);
-      await api.put(jwtToken, `/api/${userId}/tasks/${taskId}`, { content });
-    } catch (err) {
-      console.error("Failed to update task:", err);
+      await api.put<Task>(jwtToken, `/api/${userId}/tasks/${taskId}`, { content });
+    } catch {
       setError("Failed to update task.");
       await fetchTasks(); // Revert on error
     }
@@ -162,9 +147,8 @@ export const useTasks = (session: Session): UseTasksResult => {
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ));
       setError(null);
-      await api.patch(jwtToken, `/api/${userId}/tasks/${taskId}/complete`);
-    } catch (err) {
-      console.error("Failed to toggle task completion:", err);
+      await api.patch<Task>(jwtToken, `/api/${userId}/tasks/${taskId}/complete`);
+    } catch {
       setError("Failed to toggle task completion.");
       await fetchTasks(); // Revert on error
     }
@@ -177,8 +161,7 @@ export const useTasks = (session: Session): UseTasksResult => {
       setTasks(prev => prev.filter(t => t.id !== taskId));
       setError(null);
       await api.delete(jwtToken, `/api/${userId}/tasks/${taskId}`);
-    } catch (err) {
-      console.error("Failed to delete task:", err);
+    } catch {
       setError("Failed to delete task.");
       await fetchTasks(); // Revert on error
     }

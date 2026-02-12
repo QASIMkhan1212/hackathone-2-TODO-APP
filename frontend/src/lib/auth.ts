@@ -9,11 +9,12 @@ neonConfig.webSocketConstructor = ws;
 
 // Increase timeouts to handle Neon database wake-up
 neonConfig.poolQueryViaFetch = true;
-neonConfig.fetchConnectionCache = true;
 
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.DATABASE_URL;
 
-console.log("Connecting to Neon PostgreSQL database...");
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
 
 // Create Neon pool with increased timeouts for wake-up
 const pool = new Pool({
@@ -23,8 +24,51 @@ const pool = new Pool({
   connectionTimeoutMillis: 120000, // 2 minutes to allow wake-up
 });
 
+// Database schema type for Kysely
+interface Database {
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    image: string | null;
+    emailVerified: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  session: {
+    id: string;
+    userId: string;
+    token: string;
+    expiresAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  account: {
+    id: string;
+    userId: string;
+    accountId: string;
+    providerId: string;
+    accessToken: string | null;
+    refreshToken: string | null;
+    accessTokenExpiresAt: Date | null;
+    refreshTokenExpiresAt: Date | null;
+    scope: string | null;
+    idToken: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  verification: {
+    id: string;
+    identifier: string;
+    value: string;
+    expiresAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 // Create Kysely instance for better-auth
-const db = new Kysely<any>({
+const db = new Kysely<Database>({
   dialect: new PostgresDialect({
     pool,
   }),
@@ -42,7 +86,4 @@ export const auth = betterAuth({
     type: "postgres",
   },
   plugins: [jwt()],
-  advanced: {
-    generateId: () => crypto.randomUUID(),
-  },
 });

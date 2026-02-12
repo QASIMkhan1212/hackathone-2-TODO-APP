@@ -53,7 +53,18 @@ export const ChatBubble = ({ userId, token, onTasksChanged }: ChatBubbleProps) =
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,6 +74,24 @@ export const ChatBubble = ({ userId, token, onTasksChanged }: ChatBubbleProps) =
     scrollToBottom();
   }, [messages]);
 
+  // Prevent body scroll when chat is open on mobile
+  useEffect(() => {
+    if (isOpen && isMobile) {
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    };
+  }, [isOpen, isMobile]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
@@ -70,22 +99,17 @@ export const ChatBubble = ({ userId, token, onTasksChanged }: ChatBubbleProps) =
     const userMessage = inputValue.trim();
     setInputValue("");
 
-    // Add user message
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
       const response: ChatResponse = await sendChatMessage(userId, token, userMessage);
-
-      // Add assistant response
       setMessages((prev) => [...prev, { role: "assistant", content: response.response }]);
 
-      // If there were tool calls, refresh the task list
       if (response.tool_calls && response.tool_calls.length > 0) {
         onTasksChanged();
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -98,19 +122,31 @@ export const ChatBubble = ({ userId, token, onTasksChanged }: ChatBubbleProps) =
     }
   };
 
+  // Floating button when closed
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="
-          fixed bottom-6 right-6 z-50
-          w-14 h-14 rounded-full
-          bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)]
-          text-white shadow-lg
-          hover:shadow-xl hover:scale-110
-          transition-all duration-200
-          flex items-center justify-center
-        "
+        aria-label="Open AI Assistant"
+        style={{
+          position: "fixed",
+          bottom: "16px",
+          right: "16px",
+          zIndex: 9999,
+          width: "56px",
+          height: "56px",
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)",
+          color: "white",
+          border: "none",
+          boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+          touchAction: "manipulation",
+        }}
         title="Open AI Assistant"
       >
         <ChatIcon />
@@ -118,95 +154,255 @@ export const ChatBubble = ({ userId, token, onTasksChanged }: ChatBubbleProps) =
     );
   }
 
-  return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 h-[500px] flex flex-col bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-2xl animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[var(--card-border)] bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)] text-white rounded-t-2xl">
-        <div className="flex items-center gap-2">
-          <ChatIcon />
-          <h3 className="font-semibold">AI Assistant</h3>
-        </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-          title="Close"
-        >
-          <CloseIcon />
-        </button>
-      </div>
+  // Mobile styles
+  const mobileContainerStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    top: "auto",
+    height: "85vh",
+    maxHeight: "600px",
+    zIndex: 9999,
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "var(--card)",
+    borderTopLeftRadius: "20px",
+    borderTopRightRadius: "20px",
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    boxShadow: "0 -4px 30px rgba(0,0,0,0.2)",
+    overflow: "hidden",
+  };
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 && (
-          <div className="text-center text-[var(--muted)] py-8">
-            <p className="text-sm">Hi! I can help you manage your tasks.</p>
-            <p className="text-xs mt-2">Try: "Add task buy groceries" or "Show my tasks"</p>
-          </div>
-        )}
-        {messages.map((msg, idx) => (
+  // Desktop styles
+  const desktopContainerStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: "16px",
+    right: "16px",
+    left: "auto",
+    top: "auto",
+    width: "380px",
+    height: "500px",
+    zIndex: 9999,
+    display: "flex",
+    flexDirection: "column",
+    backgroundColor: "var(--card)",
+    border: "1px solid var(--card-border)",
+    borderRadius: "16px",
+    boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+    overflow: "hidden",
+  };
+
+  return (
+    <>
+      {/* Backdrop for mobile */}
+      {isMobile && (
+        <div
+          onClick={() => setIsOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 9998,
+          }}
+        />
+      )}
+
+      {/* Chat window */}
+      <div style={isMobile ? mobileContainerStyle : desktopContainerStyle}>
+        {/* Drag handle for mobile */}
+        {isMobile && (
           <div
-            key={idx}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            style={{
+              width: "100%",
+              padding: "8px 0",
+              display: "flex",
+              justifyContent: "center",
+              backgroundColor: "var(--card)",
+            }}
           >
             <div
-              className={`
-                max-w-[80%] px-4 py-2 rounded-2xl text-sm
-                ${
-                  msg.role === "user"
-                    ? "bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)] text-white rounded-br-sm"
-                    : "bg-[var(--input-bg)] text-[var(--foreground)] rounded-bl-sm"
-                }
-              `}
-            >
-              <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-[var(--input-bg)] px-4 py-2 rounded-2xl rounded-bl-sm">
-              <LoaderIcon />
-            </div>
+              style={{
+                width: "40px",
+                height: "4px",
+                backgroundColor: "var(--muted)",
+                borderRadius: "2px",
+                opacity: 0.5,
+              }}
+            />
           </div>
         )}
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-[var(--card-border)]">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Type a message..."
-            disabled={isLoading}
-            className="
-              flex-1 px-4 py-2 rounded-xl
-              bg-[var(--input-bg)] border border-[var(--card-border)]
-              focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20
-              transition-all duration-200
-              placeholder:text-[var(--muted)]
-              disabled:opacity-50
-            "
-          />
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: isMobile ? "8px 16px 12px" : "14px 16px",
+            borderBottom: "1px solid var(--card-border)",
+            background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)",
+            color: "white",
+            flexShrink: 0,
+            borderTopLeftRadius: isMobile ? 0 : "16px",
+            borderTopRightRadius: isMobile ? 0 : "16px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <ChatIcon />
+            <h3 style={{ fontWeight: 600, fontSize: "15px", margin: 0 }}>AI Assistant</h3>
+          </div>
           <button
-            type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="
-              px-4 py-2 rounded-xl
-              bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)]
-              text-white
-              hover:shadow-lg
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-200
-              flex items-center justify-center
-            "
+            onClick={() => setIsOpen(false)}
+            aria-label="Close chat"
+            style={{
+              padding: "8px",
+              background: "rgba(255,255,255,0.15)",
+              border: "none",
+              borderRadius: "8px",
+              color: "white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
           >
-            <SendIcon />
+            <CloseIcon />
           </button>
         </div>
-      </form>
-    </div>
+
+        {/* Messages */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "16px",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {messages.length === 0 && (
+            <div style={{ textAlign: "center", color: "var(--muted)", padding: "32px 16px" }}>
+              <p style={{ fontSize: "14px", margin: "0 0 8px 0" }}>Hi! I can help you manage your tasks.</p>
+              <p style={{ fontSize: "12px", margin: 0, opacity: 0.7 }}>
+                Try: "Add task buy groceries" or "Show my tasks"
+              </p>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: "flex",
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: "85%",
+                    padding: "10px 14px",
+                    borderRadius: "16px",
+                    fontSize: "14px",
+                    lineHeight: "1.5",
+                    wordBreak: "break-word",
+                    ...(msg.role === "user"
+                      ? {
+                          background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)",
+                          color: "white",
+                          borderBottomRightRadius: "4px",
+                        }
+                      : {
+                          background: "var(--input-bg)",
+                          color: "var(--foreground)",
+                          borderBottomLeftRadius: "4px",
+                        }),
+                  }}
+                >
+                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0 }}>
+                    {msg.content}
+                  </pre>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div
+                  style={{
+                    background: "var(--input-bg)",
+                    padding: "12px 16px",
+                    borderRadius: "16px",
+                    borderBottomLeftRadius: "4px",
+                  }}
+                >
+                  <LoaderIcon />
+                </div>
+              </div>
+            )}
+          </div>
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={handleSendMessage}
+          style={{
+            padding: "12px 16px",
+            paddingBottom: isMobile ? "max(12px, env(safe-area-inset-bottom, 12px))" : "12px",
+            borderTop: "1px solid var(--card-border)",
+            flexShrink: 0,
+            backgroundColor: "var(--card)",
+          }}
+        >
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Type a message..."
+              disabled={isLoading}
+              autoComplete="off"
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                borderRadius: "12px",
+                fontSize: "16px",
+                background: "var(--input-bg)",
+                border: "1px solid var(--card-border)",
+                color: "var(--foreground)",
+                outline: "none",
+                opacity: isLoading ? 0.5 : 1,
+                WebkitAppearance: "none",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim() || isLoading}
+              aria-label="Send message"
+              style={{
+                padding: "12px 18px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)",
+                color: "white",
+                border: "none",
+                cursor: !inputValue.trim() || isLoading ? "not-allowed" : "pointer",
+                opacity: !inputValue.trim() || isLoading ? 0.5 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <SendIcon />
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 };

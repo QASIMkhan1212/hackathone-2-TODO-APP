@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useTasks, Task } from "../lib/hooks/useTasks";
 import { authClient } from "../lib/auth-client";
 import { ChatBubble } from "../components/ChatBubble";
@@ -49,17 +49,6 @@ const CheckCircleIcon = () => (
   </svg>
 );
 
-const ListIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="8" y1="6" x2="21" y2="6"></line>
-    <line x1="8" y1="12" x2="21" y2="12"></line>
-    <line x1="8" y1="18" x2="21" y2="18"></line>
-    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-  </svg>
-);
-
 const LogOutIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -104,38 +93,40 @@ const UserIcon = () => (
 
 // Loading skeleton component
 const TaskSkeleton = () => (
-  <div className="flex items-center gap-4 p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] animate-pulse">
-    <div className="w-6 h-6 rounded-md bg-[var(--input-bg)]"></div>
-    <div className="flex-1 h-5 rounded bg-[var(--input-bg)]"></div>
-    <div className="w-8 h-8 rounded-lg bg-[var(--input-bg)]"></div>
+  <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-[var(--card)] border border-[var(--card-border)] animate-pulse">
+    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[var(--input-bg)]"></div>
+    <div className="flex-1 h-4 sm:h-5 rounded bg-[var(--input-bg)]"></div>
+    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[var(--input-bg)]"></div>
   </div>
 );
 
 // Empty state component
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-    <div className="w-20 h-20 rounded-full bg-[var(--primary-light)] flex items-center justify-center mb-6">
+  <div className="flex flex-col items-center justify-center py-10 sm:py-16 text-center animate-fade-in px-4">
+    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--primary-light)] flex items-center justify-center mb-4 sm:mb-6">
       <CheckCircleIcon />
     </div>
-    <h3 className="text-xl font-semibold mb-2">No tasks yet</h3>
-    <p className="text-[var(--muted)] max-w-sm">
+    <h3 className="text-lg sm:text-xl font-semibold mb-2">No tasks yet</h3>
+    <p className="text-[var(--muted)] max-w-sm text-sm sm:text-base">
       Start by adding your first task above. Stay organized and get things done!
     </p>
   </div>
 );
 
-// Task item component
-const TaskItem = ({
-  task,
-  onToggle,
-  onEdit,
-  onDelete
-}: {
+// Task item component - memoized to prevent unnecessary re-renders
+interface TaskItemProps {
   task: Task;
   onToggle: (id: number) => void;
   onEdit: (id: number, content: string) => void;
   onDelete: (id: number) => void;
-}) => {
+}
+
+const TaskItem = memo(function TaskItem({
+  task,
+  onToggle,
+  onEdit,
+  onDelete
+}: TaskItemProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(task.content);
@@ -168,7 +159,7 @@ const TaskItem = ({
   return (
     <div
       className={`
-        group flex items-center gap-4 p-4 rounded-xl
+        group flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl
         bg-[var(--card)] border border-[var(--card-border)]
         hover:shadow-[var(--shadow)] transition-all duration-200
         animate-slide-in
@@ -180,7 +171,7 @@ const TaskItem = ({
         type="checkbox"
         checked={task.completed}
         onChange={() => onToggle(task.id)}
-        className="custom-checkbox"
+        className="custom-checkbox w-5 h-5 sm:w-6 sm:h-6"
         disabled={isEditing}
       />
       {isEditing ? (
@@ -191,7 +182,7 @@ const TaskItem = ({
           onKeyDown={handleKeyDown}
           autoFocus
           className="
-            flex-1 px-3 py-1 rounded-lg
+            flex-1 px-2 sm:px-3 py-1 rounded-lg text-sm sm:text-base
             bg-[var(--input-bg)] border border-[var(--primary)]
             focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20
             transition-all duration-200
@@ -200,7 +191,7 @@ const TaskItem = ({
       ) : (
         <span
           className={`
-            flex-1 text-base transition-all duration-200 cursor-pointer
+            flex-1 text-sm sm:text-base transition-all duration-200 cursor-pointer break-words
             ${task.completed ? 'line-through text-[var(--muted)]' : ''}
           `}
           onDoubleClick={() => !task.completed && setIsEditing(true)}
@@ -209,13 +200,13 @@ const TaskItem = ({
           {task.content}
         </span>
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
         {isEditing ? (
           <>
             <button
               onClick={handleSave}
               className="
-                p-2 rounded-lg text-[var(--success)]
+                p-1.5 sm:p-2 rounded-lg text-[var(--success)]
                 hover:bg-[var(--success)]/10
                 transition-all duration-200
               "
@@ -226,7 +217,7 @@ const TaskItem = ({
             <button
               onClick={handleCancel}
               className="
-                p-2 rounded-lg text-[var(--muted)]
+                p-1.5 sm:p-2 rounded-lg text-[var(--muted)]
                 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10
                 transition-all duration-200
               "
@@ -241,8 +232,8 @@ const TaskItem = ({
               onClick={() => setIsEditing(true)}
               disabled={task.completed}
               className="
-                opacity-0 group-hover:opacity-100
-                p-2 rounded-lg text-[var(--muted)]
+                opacity-100 sm:opacity-0 sm:group-hover:opacity-100
+                p-1.5 sm:p-2 rounded-lg text-[var(--muted)]
                 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10
                 transition-all duration-200
                 disabled:opacity-30 disabled:cursor-not-allowed
@@ -255,8 +246,8 @@ const TaskItem = ({
               onClick={handleDelete}
               disabled={isDeleting}
               className="
-                opacity-0 group-hover:opacity-100
-                p-2 rounded-lg text-[var(--muted)]
+                opacity-100 sm:opacity-0 sm:group-hover:opacity-100
+                p-1.5 sm:p-2 rounded-lg text-[var(--muted)]
                 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10
                 transition-all duration-200
                 disabled:opacity-50
@@ -270,36 +261,36 @@ const TaskItem = ({
       </div>
     </div>
   );
-};
+});
 
-// Stats component
-const TaskStats = ({ tasks }: { tasks: Task[] }) => {
+// Stats component - memoized to prevent unnecessary re-renders
+const TaskStats = memo(function TaskStats({ tasks }: { tasks: Task[] }) {
   const total = tasks.length;
   const completed = tasks.filter(t => t.completed).length;
   const pending = total - completed;
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-8 animate-fade-in">
-      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 text-center">
-        <div className="text-3xl font-bold text-[var(--primary)]">{total}</div>
-        <div className="text-sm text-[var(--muted)]">Total</div>
+    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 animate-fade-in">
+      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-lg sm:rounded-xl p-2 sm:p-4 text-center">
+        <div className="text-xl sm:text-3xl font-bold text-[var(--primary)]">{total}</div>
+        <div className="text-xs sm:text-sm text-[var(--muted)]">Total</div>
       </div>
-      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 text-center">
-        <div className="text-3xl font-bold text-[var(--success)]">{completed}</div>
-        <div className="text-sm text-[var(--muted)]">Completed</div>
+      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-lg sm:rounded-xl p-2 sm:p-4 text-center">
+        <div className="text-xl sm:text-3xl font-bold text-[var(--success)]">{completed}</div>
+        <div className="text-xs sm:text-sm text-[var(--muted)]">Done</div>
       </div>
-      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 text-center">
-        <div className="text-3xl font-bold text-[var(--secondary)]">{pending}</div>
-        <div className="text-sm text-[var(--muted)]">Pending</div>
+      <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-lg sm:rounded-xl p-2 sm:p-4 text-center">
+        <div className="text-xl sm:text-3xl font-bold text-[var(--secondary)]">{pending}</div>
+        <div className="text-xs sm:text-sm text-[var(--muted)]">Pending</div>
       </div>
       {total > 0 && (
-        <div className="col-span-3 bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4">
-          <div className="flex justify-between text-sm mb-2">
+        <div className="col-span-3 bg-[var(--card)] border border-[var(--card-border)] rounded-lg sm:rounded-xl p-3 sm:p-4">
+          <div className="flex justify-between text-xs sm:text-sm mb-2">
             <span className="text-[var(--muted)]">Progress</span>
             <span className="font-medium">{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-[var(--input-bg)] rounded-full overflow-hidden">
+          <div className="h-1.5 sm:h-2 bg-[var(--input-bg)] rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[var(--primary)] to-[var(--success)] rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -309,7 +300,7 @@ const TaskStats = ({ tasks }: { tasks: Task[] }) => {
       )}
     </div>
   );
-};
+});
 
 // Sign in/up page component
 const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) => {
@@ -327,59 +318,40 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
 
     try {
       if (isSignUp) {
-        console.log("Attempting sign up with email:", email, "name:", name);
         const result = await authClient.signUp.email({
           email,
           password,
           name,
         });
-        console.log("Sign up result:", result);
-        console.log("Sign up result data:", result.data);
-        console.log("Sign up result error:", result.error);
 
         if (result.error) {
-          console.error("Sign up error details:", JSON.stringify(result.error, null, 2));
-          const errorMsg = result.error.message || result.error.status || "Sign up failed. Database may be waking up, please try again in 30 seconds.";
+          const errorMsg = result.error.message || String(result.error.status) || "Sign up failed. Database may be waking up, please try again in 30 seconds.";
           setError(errorMsg);
           setIsLoading(false);
         } else if (!result.data) {
-          console.error("Sign up returned no data and no error");
           setError("Sign up failed - no response from server. Database may still be waking up. Wait 30 seconds and try again.");
           setIsLoading(false);
         } else {
-          console.log("Sign up successful, reloading page...");
-          // Trigger session refresh after successful sign-up
-          // Keep loading state while refreshing session
           await onAuthSuccess?.();
         }
       } else {
-        console.log("Attempting sign in with email:", email);
         const result = await authClient.signIn.email({
           email,
           password,
         });
-        console.log("Sign in result:", result);
-        console.log("Sign in result data:", result.data);
-        console.log("Sign in result error:", result.error);
 
         if (result.error) {
-          console.error("Sign in error details:", JSON.stringify(result.error, null, 2));
-          const errorMsg = result.error.message || result.error.status || "Sign in failed. Database may be waking up, please try again.";
+          const errorMsg = result.error.message || String(result.error.status) || "Sign in failed. Database may be waking up, please try again.";
           setError(errorMsg);
           setIsLoading(false);
         } else if (!result.data) {
-          console.error("Sign in returned no data and no error");
           setError("Sign in failed - no response from server. Database may still be waking up.");
           setIsLoading(false);
         } else {
-          console.log("Sign in successful, reloading page...");
-          // Trigger session refresh after successful sign-in
-          // Keep loading state while refreshing session
           await onAuthSuccess?.();
         }
       }
-    } catch (err) {
-      console.error("Auth error:", err);
+    } catch {
       setError("Authentication failed. Please try again.");
       setIsLoading(false);
     }
@@ -390,8 +362,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
     setError(null);
     try {
       await authClient.signIn.social({ provider: "google" });
-    } catch (err) {
-      console.error("Sign in error:", err);
+    } catch {
       setError("Google sign-in is not configured. Please use email/password.");
       setIsLoading(false);
     }
@@ -402,26 +373,25 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
     setError(null);
     try {
       await authClient.signIn.social({ provider: "github" });
-    } catch (err) {
-      console.error("Sign in error:", err);
+    } catch {
       setError("GitHub sign-in is not configured. Please use email/password.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[var(--background)] to-[var(--primary-light)]">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-[var(--background)] to-[var(--primary-light)]">
       <div className="w-full max-w-md animate-fade-in">
-        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl shadow-[var(--shadow-lg)] p-8">
+        <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl sm:rounded-2xl shadow-[var(--shadow-lg)] p-5 sm:p-8">
           {/* Logo & Title */}
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center mx-auto mb-4 shadow-lg text-white">
-              <ListIcon />
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg overflow-hidden">
+              <img src="/logo.png" alt="Q.TODO App Logo" style={{ width: '56px', height: '56px' }} className="sm:w-[80px] sm:h-[80px] object-contain rounded-xl" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">
+            <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">
               {isSignUp ? "Create Account" : "Welcome Back"}
             </h1>
-            <p className="text-[var(--muted)]">
+            <p className="text-[var(--muted)] text-sm sm:text-base">
               {isSignUp ? "Sign up to start managing your tasks" : "Sign in to manage your tasks"}
             </p>
           </div>
@@ -434,7 +404,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
           )}
 
           {/* Email/Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
+          <form onSubmit={handleEmailAuth} className="space-y-3 sm:space-y-4 mb-5 sm:mb-6">
             {isSignUp && (
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center text-[var(--muted)]">
@@ -447,7 +417,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
                   placeholder="Full name"
                   required={isSignUp}
                   className="
-                    w-full pl-10 pr-4 py-3 rounded-xl
+                    w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base
                     bg-[var(--input-bg)] border border-[var(--card-border)]
                     focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 focus:shadow-md
                     transition-all duration-200
@@ -467,7 +437,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
                 placeholder="Email address"
                 required
                 className="
-                  w-full pl-10 pr-4 py-3 rounded-xl
+                  w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base
                   bg-[var(--input-bg)] border border-[var(--card-border)]
                   focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 focus:shadow-md
                   transition-all duration-200
@@ -487,7 +457,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
                 required
                 minLength={8}
                 className="
-                  w-full pl-10 pr-4 py-3 rounded-xl
+                  w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base
                   bg-[var(--input-bg)] border border-[var(--card-border)]
                   focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 focus:shadow-md
                   transition-all duration-200
@@ -499,7 +469,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
               type="submit"
               disabled={isLoading}
               className="
-                w-full py-3 rounded-xl font-medium
+                w-full py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-medium text-sm sm:text-base
                 bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)]
                 text-white
                 hover:shadow-lg hover:shadow-[var(--primary)]/25
@@ -514,29 +484,29 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
           </form>
 
           {/* Divider */}
-          <div className="relative my-6">
+          <div className="relative my-5 sm:my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[var(--card-border)]"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-[var(--card)] text-[var(--muted)]">or continue with</span>
+            <div className="relative flex justify-center text-xs sm:text-sm">
+              <span className="px-3 sm:px-4 bg-[var(--card)] text-[var(--muted)]">or continue with</span>
             </div>
           </div>
 
           {/* Social sign in buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
               className="
-                flex items-center justify-center gap-2
-                px-4 py-3 rounded-xl border border-[var(--card-border)]
+                flex items-center justify-center gap-1.5 sm:gap-2
+                px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border border-[var(--card-border)]
                 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--input-bg)]
-                transition-all duration-200 font-medium text-sm
+                transition-all duration-200 font-medium text-xs sm:text-sm
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              <svg width="18" height="18" viewBox="0 0 24 24">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -549,14 +519,14 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
               onClick={handleGithubSignIn}
               disabled={isLoading}
               className="
-                flex items-center justify-center gap-2
-                px-4 py-3 rounded-xl border border-[var(--card-border)]
+                flex items-center justify-center gap-1.5 sm:gap-2
+                px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border border-[var(--card-border)]
                 bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--input-bg)]
-                transition-all duration-200 font-medium text-sm
+                transition-all duration-200 font-medium text-xs sm:text-sm
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
               </svg>
               GitHub
@@ -564,7 +534,7 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
           </div>
 
           {/* Toggle sign in/up */}
-          <p className="text-center text-sm text-[var(--muted)] mt-6">
+          <p className="text-center text-xs sm:text-sm text-[var(--muted)] mt-5 sm:mt-6">
             {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               onClick={() => {
@@ -586,8 +556,8 @@ const AuthPage = ({ onAuthSuccess }: { onAuthSuccess?: () => Promise<void> }) =>
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="text-center animate-fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center mx-auto mb-4 animate-pulse text-white">
-        <ListIcon />
+      <div className="rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse overflow-hidden">
+        <img src="/logo.png" alt="Q.TODO App Logo" style={{ width: '80px', height: '80px' }} className="object-contain rounded-xl" />
       </div>
       <p className="text-[var(--muted)]">Loading...</p>
     </div>
@@ -599,10 +569,6 @@ export default function Home() {
   const { data: session, isPending, error } = authClient.useSession();
   const user = session?.user;
   const ready = !isPending;
-
-  // Debug logging
-  console.log("Session state:", { session, isPending, error, user });
-  console.log("Full session object:", JSON.stringify(session, null, 2));
 
   const [newTaskContent, setNewTaskContent] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
@@ -633,9 +599,11 @@ export default function Home() {
           if (response.ok) {
             const data = await response.json();
             setJwtToken(data.token || null);
+          } else {
+            setJwtToken(null);
           }
-        } catch (err) {
-          console.error("Failed to fetch JWT token:", err);
+        } catch {
+          setJwtToken(null);
         }
       } else {
         setJwtToken(null);
@@ -644,26 +612,25 @@ export default function Home() {
     getToken();
   }, [user]);
 
-  // Debug session data
-  console.log("Session data for useTasks:", sessionData);
-
-  const handleAddTask = async (e: React.FormEvent) => {
+  const handleAddTask = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("handleAddTask called, content:", newTaskContent);
     if (!newTaskContent.trim()) return;
     await addTask(newTaskContent);
     setNewTaskContent("");
-  };
+  }, [newTaskContent, addTask]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await authClient.signOut();
-  };
+  }, []);
 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === "active") return !task.completed;
-    if (filter === "completed") return task.completed;
-    return true;
-  });
+  // Memoize filtered tasks to prevent recalculation on every render
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (filter === "active") return !task.completed;
+      if (filter === "completed") return task.completed;
+      return true;
+    });
+  }, [tasks, filter]);
 
   if (!ready) {
     return <LoadingScreen />;
@@ -671,9 +638,6 @@ export default function Home() {
 
   // Handle auth success by refetching session
   const handleAuthSuccess = async () => {
-    console.log("Auth success, reloading page to refresh session...");
-    // Simple and reliable: reload the page to get the session
-    // The cookies are already set by the sign-in response
     window.location.reload();
   };
 
@@ -685,31 +649,31 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary-light)]/30">
       {/* Header */}
       <header className="bg-[var(--card)]/80 backdrop-blur-md border-b border-[var(--card-border)] sticky top-0 z-50 shadow-lg">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] flex items-center justify-center text-white">
-              <ListIcon />
+        <div className="max-w-2xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="Q.TODO App Logo" style={{ width: '36px', height: '36px' }} className="sm:w-[44px] sm:h-[44px] object-contain rounded-lg" />
             </div>
-            <h1 className="text-xl font-bold">TaskFlow</h1>
+            <h1 className="text-lg sm:text-xl font-bold">Q.TODO App</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               {user.image ? (
                 <img
                   src={user.image}
                   alt={user.name || "User"}
-                  className="w-8 h-8 rounded-full"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-sm font-medium transition-all duration-200">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xs sm:text-sm font-medium transition-all duration-200">
                   {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
                 </div>
               )}
-              <span className="text-sm font-medium hidden sm:block">{user.name || user.email}</span>
+              <span className="text-xs sm:text-sm font-medium hidden sm:block max-w-[120px] truncate">{user.name || user.email}</span>
             </div>
             <button
               onClick={handleSignOut}
-              className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all duration-200"
+              className="p-1.5 sm:p-2 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all duration-200"
               title="Sign out"
             >
               <LogOutIcon />
@@ -719,20 +683,20 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {/* Stats */}
         {tasks.length > 0 && <TaskStats tasks={tasks} />}
 
         {/* Add Task Form */}
-        <form onSubmit={handleAddTask} className="mb-8 animate-fade-in">
-          <div className="flex gap-3">
+        <form onSubmit={handleAddTask} className="mb-6 sm:mb-8 animate-fade-in">
+          <div className="flex gap-2 sm:gap-3">
             <input
               type="text"
               value={newTaskContent}
               onChange={(e) => setNewTaskContent(e.target.value)}
               placeholder="What needs to be done?"
               className="
-                flex-1 px-4 py-3 rounded-xl
+                flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base
                 bg-[var(--card)] border border-[var(--card-border)]
                 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 focus:shadow-md
                 transition-all duration-200
@@ -743,7 +707,7 @@ export default function Home() {
               type="submit"
               disabled={!newTaskContent.trim() || tasksLoading}
               className="
-                px-5 py-3 rounded-xl
+                px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl
                 bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)]
                 text-white font-medium
                 hover:shadow-lg hover:shadow-[var(--primary)]/25
@@ -760,13 +724,13 @@ export default function Home() {
 
         {/* Filter Tabs */}
         {tasks.length > 0 && (
-          <div className="flex gap-2 mb-6 animate-fade-in">
+          <div className="flex gap-1.5 sm:gap-2 mb-4 sm:mb-6 animate-fade-in overflow-x-auto pb-1">
             {(["all", "active", "completed"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`
-                  px-4 py-2 rounded-xl text-sm font-medium
+                  px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap
                   transition-all duration-200
                   ${filter === f
                     ? 'bg-[var(--primary)] text-white'
@@ -782,13 +746,13 @@ export default function Home() {
 
         {/* Error State */}
         {tasksError && (
-          <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-xl p-4 mb-6 text-[var(--danger)] animate-fade-in">
+          <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 text-[var(--danger)] text-sm sm:text-base animate-fade-in">
             {tasksError}
           </div>
         )}
 
         {/* Task List */}
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {tasksLoading && tasks.length === 0 ? (
             <>
               <TaskSkeleton />
@@ -798,7 +762,7 @@ export default function Home() {
           ) : filteredTasks.length === 0 && tasks.length === 0 ? (
             <EmptyState />
           ) : filteredTasks.length === 0 ? (
-            <div className="text-center py-8 text-[var(--muted)] animate-fade-in">
+            <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-[var(--muted)] animate-fade-in">
               No {filter} tasks
             </div>
           ) : (
@@ -816,12 +780,12 @@ export default function Home() {
 
         {/* Clear completed button */}
         {tasks.some(t => t.completed) && (
-          <div className="mt-8 text-center animate-fade-in">
+          <div className="mt-6 sm:mt-8 text-center animate-fade-in">
             <button
               onClick={() => {
                 tasks.filter(t => t.completed).forEach(t => deleteTask(t.id));
               }}
-              className="text-sm text-[var(--muted)] hover:text-[var(--danger)] transition-colors"
+              className="text-xs sm:text-sm text-[var(--muted)] hover:text-[var(--danger)] transition-colors py-2 px-4"
             >
               Clear completed tasks
             </button>
@@ -829,10 +793,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="text-center py-8 text-sm text-[var(--muted)]">
-        <p>Built with Next.js & Tailwind CSS</p>
-      </footer>
 
       {/* AI Chat Assistant */}
       {jwtToken && (
