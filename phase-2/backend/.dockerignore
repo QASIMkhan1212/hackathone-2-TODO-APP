@@ -1,0 +1,46 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment files (secrets should be passed at runtime)
+.env
+.env.local
+.env.*
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Misc
+*.log
+*.md
+!README.md
+.git
+.gitignore
+Dockerfile*
+docker-compose*
+
+# Database migration scripts (not needed in production)
+complete_setup.py
+init_auth_tables.py
+fix_user_id_column.py
+quick_fix_db.py
+quick_fix.sql
+test_*.py

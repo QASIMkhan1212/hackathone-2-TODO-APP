@@ -1,0 +1,86 @@
+============================================
+  Q.TODO App - Deployment Successful!
+============================================
+
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+============================================
+  ACCESSING YOUR APPLICATION
+============================================
+
+{{- if .Values.ingress.enabled }}
+The application is accessible via Ingress:
+
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+
+Make sure to add the following to your /etc/hosts file (or use minikube tunnel):
+  <MINIKUBE_IP> {{ (index .Values.ingress.hosts 0).host }}
+
+Get Minikube IP:
+  minikube ip
+
+Or use Minikube tunnel:
+  minikube tunnel
+
+{{- else }}
+
+Get the application URLs by running:
+
+Frontend:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "qtodo.name" . }},app.kubernetes.io/component=frontend" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 3000:3000
+
+Backend API:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "qtodo.name" . }},app.kubernetes.io/component=backend" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8000:8000
+
+{{- end }}
+
+============================================
+  USEFUL COMMANDS
+============================================
+
+Check deployment status:
+  kubectl get all -n {{ .Release.Namespace }}
+
+View pod logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=frontend --tail=100
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=backend --tail=100
+
+Check HPA status:
+  kubectl get hpa -n {{ .Release.Namespace }}
+
+Scale deployments:
+  kubectl scale deployment {{ include "qtodo.frontend.fullname" . }} --replicas=3 -n {{ .Release.Namespace }}
+
+============================================
+  AI-ASSISTED OPERATIONS
+============================================
+
+Using kubectl-ai:
+  kubectl-ai "check status of qtodo deployment"
+  kubectl-ai "show logs from backend pods"
+  kubectl-ai "scale frontend to 3 replicas"
+
+Using Kagent:
+  kagent "analyze cluster health"
+  kagent "optimize resource allocation"
+
+============================================
+  CLEANUP
+============================================
+
+To uninstall the release:
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+To delete the namespace:
+  kubectl delete namespace {{ .Release.Namespace }}
+
+============================================

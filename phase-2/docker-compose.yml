@@ -1,0 +1,76 @@
+# ============================================
+# Q.TODO App - Docker Compose Configuration
+# ============================================
+# Use this for local development and testing
+# before deploying to Kubernetes
+# ============================================
+
+version: '3.8'
+
+services:
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_APP_URL=http://localhost:3000
+        - DATABASE_URL=${DATABASE_URL}
+        - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+    image: qtodo-frontend:latest
+    container_name: qtodo-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - qtodo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: qtodo-backend:latest
+    container_name: qtodo-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=http://frontend:3000
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    networks:
+      - qtodo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  qtodo-network:
+    driver: bridge
+    name: qtodo-network
+
+# Volumes for persistent data (if needed in future)
+volumes:
+  qtodo-data:
+    driver: local
